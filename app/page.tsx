@@ -2,10 +2,12 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { WordItem } from "@/app/api/analyze/route";
-
-type DifficultyLevel = "any" | "beginner" | "intermediate" | "advanced";
 import WordCard from "@/components/WordCard";
 import WordBook from "@/components/WordBook";
+import StatsBar from "@/components/StatsBar";
+import { loadStats, recordPhotoAnalyzed, recordWordsSaved, Stats } from "@/lib/stats";
+
+type DifficultyLevel = "any" | "beginner" | "intermediate" | "advanced";
 
 const STORAGE_KEY = "photo-english-wordbook";
 
@@ -40,9 +42,11 @@ export default function Home() {
   const [savedAll, setSavedAll] = useState(false);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("any");
   const [loadingStep, setLoadingStep] = useState(0);
+  const [stats, setStats] = useState<Stats>(() => ({ wordsSaved: 0, photosAnalyzed: 0, reviewSessions: 0, streakDays: 0, lastActiveDate: "" }));
 
   useEffect(() => {
     setSavedWords(loadSavedWords());
+    setStats(loadStats());
   }, []);
 
   // Reset "saved all" state when words change
@@ -103,6 +107,8 @@ export default function Home() {
         );
       }
       setWords(data.words);
+      recordPhotoAnalyzed();
+      setStats(loadStats());
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       const isOffline = !navigator.onLine;
@@ -118,6 +124,8 @@ export default function Home() {
       if (prev.find((w) => w.word === word.word)) return prev;
       const updated = [...prev, word];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      recordWordsSaved(1);
+      setStats(loadStats());
       return updated;
     });
   }, []);
@@ -128,6 +136,8 @@ export default function Home() {
       if (newWords.length === 0) return prev;
       const updated = [...prev, ...newWords];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      recordWordsSaved(newWords.length);
+      setStats(loadStats());
       return updated;
     });
     setSavedAll(true);
@@ -174,6 +184,8 @@ export default function Home() {
       </header>
 
       <main className="flex-1 flex flex-col px-4 pb-8 gap-4 max-w-lg mx-auto w-full">
+        <StatsBar stats={stats} />
+
         {/* Upload area */}
         {!imageUrl ? (
           <div className="w-full flex flex-col gap-3">

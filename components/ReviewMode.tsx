@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { WordItem } from "@/app/api/analyze/route";
+import { recordReviewSession } from "@/lib/stats";
 
 interface ReviewModeProps {
   words: WordItem[];
@@ -42,6 +43,7 @@ export default function ReviewMode({ words, onClose }: ReviewModeProps) {
       else setUnknown((u) => u + 1);
 
       if (index + 1 >= deck.length) {
+        recordReviewSession();
         setDone(true);
       } else {
         setIndex((i) => i + 1);
