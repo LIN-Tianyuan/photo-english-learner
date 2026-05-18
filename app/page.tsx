@@ -9,6 +9,13 @@ import WordBook from "@/components/WordBook";
 
 const STORAGE_KEY = "photo-english-wordbook";
 
+const LOADING_STEPS = [
+  "Scanning your photo…",
+  "Identifying objects…",
+  "Looking up English words…",
+  "Almost done…",
+];
+
 function loadSavedWords(): WordItem[] {
   if (typeof window === "undefined") return [];
   try {
@@ -32,6 +39,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [savedAll, setSavedAll] = useState(false);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("any");
+  const [loadingStep, setLoadingStep] = useState(0);
 
   useEffect(() => {
     setSavedWords(loadSavedWords());
@@ -71,8 +79,14 @@ export default function Home() {
   const analyzeImage = useCallback(async () => {
     if (!imageBase64) return;
     setLoading(true);
+    setLoadingStep(0);
     setError(null);
     setWords([]);
+
+    const stepTimer = setInterval(() => {
+      setLoadingStep((s) => Math.min(s + 1, LOADING_STEPS.length - 1));
+    }, 2200);
+
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -80,14 +94,24 @@ export default function Home() {
         body: JSON.stringify({ imageBase64, mimeType, difficulty }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      if (!res.ok) {
+        const isNetworkLike = res.status >= 500;
+        throw new Error(
+          isNetworkLike
+            ? "Server error, please try again."
+            : data.error || "Analysis failed"
+        );
+      }
       setWords(data.words);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      const isOffline = !navigator.onLine;
+      setError(isOffline ? "No internet connection. Please check your network." : msg);
     } finally {
+      clearInterval(stepTimer);
       setLoading(false);
     }
-  }, [imageBase64, mimeType]);
+  }, [imageBase64, mimeType, difficulty]);
 
   const saveWord = useCallback((word: WordItem) => {
     setSavedWords((prev) => {
@@ -201,10 +225,11 @@ export default function Home() {
               <button
                 key={w.word}
                 onClick={() => setSelectedWord(w)}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 text-xs font-bold px-3 py-1.5 rounded-full active:scale-95 transition-all whitespace-nowrap border-2 border-white/80 backdrop-blur-sm text-white"
+                className="word-label absolute transform -translate-x-1/2 -translate-y-1/2 text-xs font-bold px-3 py-1.5 rounded-full active:scale-95 transition-colors whitespace-nowrap border-2 border-white/80 backdrop-blur-sm text-white"
                 style={{
                   left: `${w.x}%`,
                   top: `${w.y}%`,
+                  animationDelay: `${words.indexOf(w) * 120}ms`,
                   background: isSaved(w.word)
                     ? "linear-gradient(135deg, #22c55e, #16a34a)"
                     : "linear-gradient(135deg, #3b82f6, #6366f1)",
@@ -264,9 +289,17 @@ export default function Home() {
 
         {/* Error */}
         {error && (
-          <div className="w-full bg-red-50 border border-red-100 text-red-500 text-sm rounded-2xl px-4 py-3 flex items-center gap-2">
-            <span>⚠️</span>
-            <span>{error}</span>
+          <div className="w-full bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-red-500 text-sm">
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={analyzeImage}
+              className="text-xs font-semibold text-white bg-red-400 hover:bg-red-500 px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors"
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -337,11 +370,11 @@ export default function Home() {
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+                  <svg className="animate-spin w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  <span>AI is analyzing…</span>
+                  <span className="transition-all">{LOADING_STEPS[loadingStep]}</span>
                 </>
               ) : (
                 <>
