@@ -2,6 +2,8 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { WordItem } from "@/app/api/analyze/route";
+
+type DifficultyLevel = "any" | "beginner" | "intermediate" | "advanced";
 import WordCard from "@/components/WordCard";
 import WordBook from "@/components/WordBook";
 
@@ -29,6 +31,7 @@ export default function Home() {
   const [showWordBook, setShowWordBook] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAll, setSavedAll] = useState(false);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>("any");
 
   useEffect(() => {
     setSavedWords(loadSavedWords());
@@ -74,7 +77,7 @@ export default function Home() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64, mimeType }),
+        body: JSON.stringify({ imageBase64, mimeType, difficulty }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Analysis failed");
@@ -264,6 +267,37 @@ export default function Home() {
           <div className="w-full bg-red-50 border border-red-100 text-red-500 text-sm rounded-2xl px-4 py-3 flex items-center gap-2">
             <span>⚠️</span>
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* Difficulty selector */}
+        {imageUrl && (
+          <div className="flex gap-2">
+            {(
+              [
+                { value: "any", label: "不限" },
+                { value: "beginner", label: "初级" },
+                { value: "intermediate", label: "中级" },
+                { value: "advanced", label: "高级" },
+              ] as { value: DifficultyLevel; label: string }[]
+            ).map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setDifficulty(value)}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all"
+                style={
+                  difficulty === value
+                    ? {
+                        background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+                        color: "#fff",
+                        boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
+                      }
+                    : { background: "#fff", color: "#94a3b8", border: "1.5px solid #e2e8f0" }
+                }
+              >
+                {label}
+              </button>
+            ))}
           </div>
         )}
 
