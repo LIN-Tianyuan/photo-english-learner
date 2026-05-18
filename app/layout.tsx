@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PhotoWords - Learn English from your photos",
   description: "Take a photo and learn English words from everyday life",
+  themeColor: "#3b82f6",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PhotoWords",
+  },
 };
 
 export default function RootLayout({
