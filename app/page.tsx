@@ -6,6 +6,7 @@ import WordCard from "@/components/WordCard";
 import WordBook from "@/components/WordBook";
 import StatsBar from "@/components/StatsBar";
 import { loadStats, recordPhotoAnalyzed, recordWordsSaved, Stats } from "@/lib/stats";
+import { generateShareCard, shareOrDownload } from "@/lib/shareCard";
 
 type DifficultyLevel = "any" | "beginner" | "intermediate" | "advanced";
 
@@ -42,6 +43,7 @@ export default function Home() {
   const [savedAll, setSavedAll] = useState(false);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("any");
   const [loadingStep, setLoadingStep] = useState(0);
+  const [sharing, setSharing] = useState(false);
   const [stats, setStats] = useState<Stats>(() => ({ wordsSaved: 0, photosAnalyzed: 0, reviewSessions: 0, streakDays: 0, lastActiveDate: "" }));
 
   useEffect(() => {
@@ -142,6 +144,19 @@ export default function Home() {
     });
     setSavedAll(true);
   }, [words]);
+
+  const handleShare = useCallback(async () => {
+    if (!imageUrl || words.length === 0) return;
+    setSharing(true);
+    try {
+      const blob = await generateShareCard(imageUrl, words);
+      await shareOrDownload(blob);
+    } catch (err) {
+      console.error("Share failed:", err);
+    } finally {
+      setSharing(false);
+    }
+  }, [imageUrl, words]);
 
   const removeWord = useCallback((wordStr: string) => {
     setSavedWords((prev) => {
@@ -349,20 +364,44 @@ export default function Home() {
         {/* Action buttons after analysis */}
         {imageUrl && (
           <div className="flex flex-col gap-3">
-            {/* Save all — only shown when words exist and not all saved */}
-            {words.length > 0 && !allSaved && (
-              <button
-                onClick={saveAllWords}
-                className="w-full py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
-                style={{
-                  background: savedAll ? "#f0fdf4" : "linear-gradient(135deg, #22c55e, #16a34a)",
-                  color: savedAll ? "#16a34a" : "#fff",
-                  boxShadow: savedAll ? "none" : "0 6px 20px rgba(34,197,94,0.3)",
-                }}
-              >
-                <span>{savedAll ? "✓" : "📖"}</span>
-                <span>Save all {words.length} words</span>
-              </button>
+            {/* Save all + Share row */}
+            {words.length > 0 && (
+              <div className="flex gap-3">
+                {!allSaved && (
+                  <button
+                    onClick={saveAllWords}
+                    className="flex-1 py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                    style={{
+                      background: savedAll ? "#f0fdf4" : "linear-gradient(135deg, #22c55e, #16a34a)",
+                      color: savedAll ? "#16a34a" : "#fff",
+                      boxShadow: savedAll ? "none" : "0 6px 20px rgba(34,197,94,0.3)",
+                    }}
+                  >
+                    <span>{savedAll ? "✓" : "📖"}</span>
+                    <span>Save all {words.length}</span>
+                  </button>
+                )}
+                <button
+                  onClick={handleShare}
+                  disabled={sharing}
+                  className="flex-1 py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm disabled:opacity-50"
+                >
+                  {sharing ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      <span>Generating…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔗</span>
+                      <span>Share card</span>
+                    </>
+                  )}
+                </button>
+              </div>
             )}
 
             {/* Analyze button */}
