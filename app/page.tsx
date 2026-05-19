@@ -7,11 +7,12 @@ import WordBook from "@/components/WordBook";
 import StatsBar from "@/components/StatsBar";
 import { loadStats, recordPhotoAnalyzed, recordWordsSaved, Stats } from "@/lib/stats";
 import { generateShareCard, shareOrDownload } from "@/lib/shareCard";
+import { getQuota, incrementQuota } from "@/lib/quota";
+import PaywallModal from "@/components/PaywallModal";
 
 type DifficultyLevel = "any" | "beginner" | "intermediate" | "advanced";
 
 const STORAGE_KEY = "photo-english-wordbook";
-const SUPPORTED_MIME = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 const LOADING_STEPS = [
   "Scanning your photo…",
@@ -45,6 +46,8 @@ export default function Home() {
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("any");
   const [loadingStep, setLoadingStep] = useState(0);
   const [sharing, setSharing] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [quota, setQuota] = useState(() => getQuota());
   const [stats, setStats] = useState<Stats>(() => ({ wordsSaved: 0, photosAnalyzed: 0, reviewSessions: 0, streakDays: 0, lastActiveDate: "" }));
 
   useEffect(() => {
@@ -106,6 +109,8 @@ export default function Home() {
 
   const analyzeImage = useCallback(async () => {
     if (!imageBase64) return;
+    const q = getQuota();
+    if (q.exceeded) { setShowPaywall(true); return; }
     setLoading(true);
     setLoadingStep(0);
     setError(null);
@@ -131,6 +136,8 @@ export default function Home() {
         );
       }
       setWords(data.words);
+      incrementQuota();
+      setQuota(getQuota());
       recordPhotoAnalyzed();
       setStats(loadStats());
     } catch (err) {
@@ -453,6 +460,9 @@ export default function Home() {
                 <>
                   <span className="text-lg">✨</span>
                   <span>{words.length > 0 ? "Analyze again" : "Find English words"}</span>
+                {quota.used > 0 && !loading && (
+                  <span className="text-xs opacity-70 ml-1">({quota.limit - quota.used} left today)</span>
+                )}
                 </>
               )}
             </button>
@@ -496,6 +506,13 @@ export default function Home() {
           words={savedWords}
           onClose={() => setShowWordBook(false)}
           onRemove={removeWord}
+        />
+      )}
+      {showPaywall && (
+        <PaywallModal
+          used={quota.used}
+          limit={quota.limit}
+          onClose={() => setShowPaywall(false)}
         />
       )}
     </div>
