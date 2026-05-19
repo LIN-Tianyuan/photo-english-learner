@@ -81,6 +81,16 @@ export default function Home() {
       setMimeType("image/jpeg");
       setImageBase64(base64);
     };
+    // Fallback: if canvas can't handle the format, read raw bytes directly
+    img.onerror = () => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setMimeType("image/jpeg");
+        setImageBase64(result.split(",")[1]);
+      };
+      reader.readAsDataURL(file);
+    };
     img.src = previewUrl;
   }, []);
 
