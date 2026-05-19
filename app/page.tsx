@@ -11,6 +11,7 @@ import { generateShareCard, shareOrDownload } from "@/lib/shareCard";
 type DifficultyLevel = "any" | "beginner" | "intermediate" | "advanced";
 
 const STORAGE_KEY = "photo-english-wordbook";
+const SUPPORTED_MIME = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 const LOADING_STEPS = [
   "Scanning your photo…",
@@ -61,7 +62,7 @@ export default function Home() {
     setImageUrl(url);
     setWords([]);
     setError(null);
-    setMimeType(file.type || "image/jpeg");
+    setMimeType(SUPPORTED_MIME.has(file.type) ? file.type : "image/jpeg");
 
     const reader = new FileReader();
     reader.onload = (e) => {
