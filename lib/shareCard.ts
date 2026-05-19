@@ -111,17 +111,23 @@ export async function shareOrDownload(blob: Blob) {
   const file = new File([blob], "photowords.jpg", { type: "image/jpeg" });
 
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({
-      files: [file],
-      title: "Learn English with PhotoWords",
-    });
-  } else {
-    // Fallback: download
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "photowords.jpg";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    try {
+      await navigator.share({
+        files: [file],
+        title: "Learn English with PhotoWords",
+      });
+      return;
+    } catch (err) {
+      // User cancelled (AbortError) — do nothing; any other error falls through to download
+      if (err instanceof Error && err.name === "AbortError") return;
+    }
   }
+
+  // Fallback: download
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "photowords.jpg";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
