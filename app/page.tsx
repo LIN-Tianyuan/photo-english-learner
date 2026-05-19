@@ -58,19 +58,30 @@ export default function Home() {
   }, [words]);
 
   const handleFileChange = useCallback((file: File) => {
-    const url = URL.createObjectURL(file);
-    setImageUrl(url);
+    const previewUrl = URL.createObjectURL(file);
+    setImageUrl(previewUrl);
     setWords([]);
     setError(null);
-    setMimeType(SUPPORTED_MIME.has(file.type) ? file.type : "image/jpeg");
+    setImageBase64(null);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      const base64 = result.split(",")[1];
+    // Compress + convert to JPEG on canvas (fixes HEIC and large file issues)
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1280;
+      let { naturalWidth: w, naturalHeight: h } = img;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round((h * MAX) / w); w = MAX; }
+        else       { w = Math.round((w * MAX) / h); h = MAX; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+      setMimeType("image/jpeg");
       setImageBase64(base64);
     };
-    reader.readAsDataURL(file);
+    img.src = previewUrl;
   }, []);
 
   const handleInputChange = useCallback(
