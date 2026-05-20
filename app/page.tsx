@@ -9,6 +9,8 @@ import { loadStats, recordPhotoAnalyzed, recordWordsSaved, Stats } from "@/lib/s
 import { generateShareCard, shareOrDownload } from "@/lib/shareCard";
 import { getQuota, incrementQuota } from "@/lib/quota";
 import PaywallModal from "@/components/PaywallModal";
+import ConversationCard from "@/components/ConversationCard";
+import { ConversationResult } from "@/app/api/conversation/route";
 
 type DifficultyLevel = "any" | "beginner" | "intermediate" | "advanced";
 
@@ -48,6 +50,9 @@ export default function Home() {
   const [sharing, setSharing] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [quota, setQuota] = useState(() => getQuota());
+  const [conversation, setConversation] = useState<ConversationResult | null>(null);
+  const [loadingConversation, setLoadingConversation] = useState(false);
+  const isPremium = false; // TODO: wire up real payment
   const [stats, setStats] = useState<Stats>(() => ({ wordsSaved: 0, photosAnalyzed: 0, reviewSessions: 0, streakDays: 0, lastActiveDate: "" }));
 
   useEffect(() => {
@@ -55,9 +60,10 @@ export default function Home() {
     setStats(loadStats());
   }, []);
 
-  // Reset "saved all" state when words change
+  // Reset per-photo state when words change
   useEffect(() => {
     setSavedAll(false);
+    setConversation(null);
   }, [words]);
 
   const handleFileChange = useCallback((file: File) => {
@@ -149,6 +155,25 @@ export default function Home() {
       setLoading(false);
     }
   }, [imageBase64, mimeType, difficulty]);
+
+  const generateConversation = useCallback(async () => {
+    if (!imageBase64 || words.length === 0) return;
+    setLoadingConversation(true);
+    try {
+      const res = await fetch("/api/conversation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64, mimeType, words }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setConversation(data);
+    } catch (err) {
+      console.error("Conversation error:", err);
+    } finally {
+      setLoadingConversation(false);
+    }
+  }, [imageBase64, mimeType, words]);
 
   const saveWord = useCallback((word: WordItem) => {
     setSavedWords((prev) => {
@@ -467,6 +492,39 @@ export default function Home() {
               )}
             </button>
           </div>
+        )}
+
+        {/* Conversation Practice */}
+        {words.length > 0 && (
+          conversation ? (
+            <ConversationCard
+              result={conversation}
+              isPremium={isPremium}
+              onUnlock={() => setShowPaywall(true)}
+            />
+          ) : (
+            <button
+              onClick={generateConversation}
+              disabled={loadingConversation}
+              className="w-full py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-sm disabled:opacity-50"
+            >
+              {loadingConversation ? (
+                <>
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  <span>Generating conversation…</span>
+                </>
+              ) : (
+                <>
+                  <span>💬</span>
+                  <span>Generate Conversation Practice</span>
+                  <span className="text-xs bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 rounded-full">PRO</span>
+                </>
+              )}
+            </button>
+          )
         )}
 
         {/* How it works — shown only before first upload */}
