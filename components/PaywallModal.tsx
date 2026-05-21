@@ -13,15 +13,23 @@ interface PaywallModalProps {
 export default function PaywallModal({ used, limit, onClose }: PaywallModalProps) {
   const { isSignedIn } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const handleUpgrade = async () => {
     track("upgrade_clicked", { used, limit });
     setLoading(true);
+    setCheckoutError(null);
     try {
       const res = await fetch("/api/checkout", { method: "POST" });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setCheckoutError(data.error || "Something went wrong. Please try again.");
+        setLoading(false);
+      }
     } catch {
+      setCheckoutError("Network error. Please try again.");
       setLoading(false);
     }
   };
@@ -80,6 +88,10 @@ export default function PaywallModal({ used, limit, onClose }: PaywallModalProps
             <span className="text-slate-400 text-sm"> / month</span>
             <p className="text-xs text-slate-400 mt-0.5">Cancel anytime</p>
           </div>
+
+          {checkoutError && (
+            <p className="text-red-500 text-xs text-center mb-3">{checkoutError}</p>
+          )}
 
           {isSignedIn ? (
             <button
