@@ -289,13 +289,19 @@ function HomeContent() {
           {user ? (
             <div className="flex items-center gap-1.5">
               {isPremium && (
-                <div
-                  className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold text-white"
+                <button
+                  onClick={async () => {
+                    const res = await fetch("/api/portal", { method: "POST" });
+                    const data = await res.json();
+                    if (data.url) window.location.href = data.url;
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold text-white transition-opacity hover:opacity-80"
                   style={{ background: "linear-gradient(135deg, #f59e0b, #f97316)", boxShadow: "0 2px 8px rgba(249,115,22,0.35)" }}
+                  title="Manage subscription"
                 >
                   <span>⚡</span>
                   <span>PRO</span>
-                </div>
+                </button>
               )}
               <UserButton />
             </div>

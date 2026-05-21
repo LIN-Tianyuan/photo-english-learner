@@ -22,7 +22,10 @@ export async function POST(req: NextRequest) {
     if (clerkUserId) {
       const client = await clerkClient();
       await client.users.updateUserMetadata(clerkUserId, {
-        publicMetadata: { isPremium: true },
+        publicMetadata: {
+          isPremium: true,
+          stripeCustomerId: session.customer as string,
+        },
       });
     }
   }
