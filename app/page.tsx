@@ -287,7 +287,18 @@ function HomeContent() {
             )}
           </button>
           {user ? (
-            <UserButton />
+            <div className="flex items-center gap-1.5">
+              {isPremium && (
+                <div
+                  className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold text-white"
+                  style={{ background: "linear-gradient(135deg, #f59e0b, #f97316)", boxShadow: "0 2px 8px rgba(249,115,22,0.35)" }}
+                >
+                  <span>⚡</span>
+                  <span>PRO</span>
+                </div>
+              )}
+              <UserButton />
+            </div>
           ) : (
             <SignInButton mode="modal">
               <button className="flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3.5 py-2 rounded-2xl text-sm font-medium shadow-sm shadow-blue-200 hover:shadow-md hover:shadow-blue-300 transition-all">
@@ -531,7 +542,7 @@ function HomeContent() {
                 <>
                   <span className="text-lg">✨</span>
                   <span>{words.length > 0 ? "Analyze again" : "Find English words"}</span>
-                {quota.used > 0 && !loading && (
+                {quota.used > 0 && !loading && !isPremium && (
                   <span className="text-xs opacity-70 ml-1">({quota.limit - quota.used} left today)</span>
                 )}
                 </>
