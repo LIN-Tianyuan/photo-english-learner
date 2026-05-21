@@ -21,15 +21,23 @@ export default function PaywallModal({ used, limit, onClose }: PaywallModalProps
     setCheckoutError(null);
     try {
       const res = await fetch("/api/checkout", { method: "POST" });
-      const data = await res.json();
+      let data: Record<string, string> = {};
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text().catch(() => "");
+        setCheckoutError(`Server error ${res.status}: ${text.slice(0, 120) || "no details"}`);
+        setLoading(false);
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
       } else {
         setCheckoutError(data.error || "Something went wrong. Please try again.");
         setLoading(false);
       }
-    } catch {
-      setCheckoutError("Network error. Please try again.");
+    } catch (err) {
+      setCheckoutError(`Request failed: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
   };
