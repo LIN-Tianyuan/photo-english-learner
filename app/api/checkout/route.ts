@@ -16,12 +16,18 @@ export async function POST() {
   }
 
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+    if (!appUrl) {
+      return NextResponse.json({ error: "NEXT_PUBLIC_APP_URL not configured" }, { status: 500 });
+    }
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/?payment=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/`,
+      success_url: `${appUrl}/?payment=success`,
+      cancel_url: `${appUrl}/`,
       metadata: { clerkUserId: userId },
       subscription_data: { metadata: { clerkUserId: userId } },
     });
