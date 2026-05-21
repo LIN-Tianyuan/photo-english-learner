@@ -140,7 +140,7 @@ function HomeContent() {
   const analyzeImage = useCallback(async () => {
     if (!imageBase64) return;
     const q = getQuota();
-    if (q.exceeded) { setShowPaywall(true); return; }
+    if (q.exceeded && !isPremium) { setShowPaywall(true); return; }
     setLoading(true);
     setLoadingStep(0);
     setError(null);
