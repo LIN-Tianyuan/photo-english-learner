@@ -54,6 +54,7 @@ function HomeContent() {
   const [quota, setQuota] = useState(() => getQuota());
   const [conversation, setConversation] = useState<ConversationResult | null>(null);
   const [loadingConversation, setLoadingConversation] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const { user } = useUser();
   const isPremium = user?.publicMetadata?.isPremium === true;
   const searchParams = useSearchParams();
@@ -68,6 +69,20 @@ function HomeContent() {
   useEffect(() => {
     if (searchParams.get("payment") === "start") setShowPaywall(true);
   }, [searchParams]);
+
+  // After successful payment, poll until Clerk metadata reflects isPremium
+  useEffect(() => {
+    if (searchParams.get("payment") !== "success") return;
+    setPaymentSuccess(true);
+    if (!user) return;
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      await user.reload();
+      attempts++;
+      if (user.publicMetadata?.isPremium || attempts >= 10) clearInterval(interval);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [searchParams, user]);
 
   // Reset per-photo state when words change
   useEffect(() => {
@@ -234,6 +249,17 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col">
+      {/* Payment success banner */}
+      {paymentSuccess && !isPremium && (
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm text-center py-2.5 px-4 animate-pulse">
+          Activating your Pro account… please wait a moment
+        </div>
+      )}
+      {paymentSuccess && isPremium && (
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm text-center py-2.5 px-4">
+          Pro activated! Welcome to PhotoWords Pro 🎉
+        </div>
+      )}
       {/* Header */}
       <header className="px-5 pt-5 pb-4 flex items-center justify-between">
         <div>
