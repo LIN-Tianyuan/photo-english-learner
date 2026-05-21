@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useAuth, SignInButton } from "@clerk/nextjs";
 import { track } from "@vercel/analytics";
 
 interface PaywallModalProps {
@@ -9,8 +11,19 @@ interface PaywallModalProps {
 }
 
 export default function PaywallModal({ used, limit, onClose }: PaywallModalProps) {
-  const handleUpgradeClick = () => {
+  const { isSignedIn } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  const handleUpgrade = async () => {
     track("upgrade_clicked", { used, limit });
+    setLoading(true);
+    try {
+      const res = await fetch("/api/checkout", { method: "POST" });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,10 +43,12 @@ export default function PaywallModal({ used, limit, onClose }: PaywallModalProps
         >
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
           <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-white/10" />
-          <div className="text-5xl mb-3 relative z-10">🔒</div>
-          <h2 className="text-white text-2xl font-bold relative z-10">Daily limit reached</h2>
+          <div className="text-5xl mb-3 relative z-10">🚀</div>
+          <h2 className="text-white text-2xl font-bold relative z-10">Unlock PhotoWords Pro</h2>
           <p className="text-blue-200 text-sm mt-1 relative z-10">
-            You've used all {limit} free analyses today
+            {used >= limit
+              ? `You've used all ${limit} free analyses today`
+              : "Unlock all premium features"}
           </p>
         </div>
 
@@ -42,6 +57,7 @@ export default function PaywallModal({ used, limit, onClose }: PaywallModalProps
           <div className="flex flex-col gap-3 mb-5">
             {[
               "Unlimited photo analyses",
+              "Conversation Practice (My Story + Small Talk)",
               "No daily restrictions",
               "Support further development",
             ].map((item) => (
@@ -59,19 +75,41 @@ export default function PaywallModal({ used, limit, onClose }: PaywallModalProps
             ))}
           </div>
 
-          <button
-            onClick={handleUpgradeClick}
-            className="w-full py-3.5 rounded-2xl text-white font-semibold text-base mb-3"
-            style={{
-              background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-              boxShadow: "0 8px 25px rgba(99,102,241,0.35)",
-            }}
-          >
-            Unlock Unlimited
-          </button>
+          <div className="text-center mb-4">
+            <span className="text-3xl font-bold text-slate-800">$4.99</span>
+            <span className="text-slate-400 text-sm"> / month</span>
+            <p className="text-xs text-slate-400 mt-0.5">Cancel anytime</p>
+          </div>
+
+          {isSignedIn ? (
+            <button
+              onClick={handleUpgrade}
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl text-white font-semibold text-base mb-3 disabled:opacity-70"
+              style={{
+                background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+                boxShadow: "0 8px 25px rgba(99,102,241,0.35)",
+              }}
+            >
+              {loading ? "Redirecting…" : "Unlock Pro · $4.99/mo"}
+            </button>
+          ) : (
+            <SignInButton mode="modal" fallbackRedirectUrl="/?payment=start">
+              <button
+                className="w-full py-3.5 rounded-2xl text-white font-semibold text-base mb-3"
+                style={{
+                  background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+                  boxShadow: "0 8px 25px rgba(99,102,241,0.35)",
+                }}
+                onClick={() => track("signin_for_upgrade_clicked")}
+              >
+                Sign in to Unlock Pro
+              </button>
+            </SignInButton>
+          )}
 
           <p className="text-xs text-slate-400 text-center mb-3">
-            Resets tomorrow · Come back then for 3 more free analyses
+            Secure payment via Stripe · Cancel anytime
           </p>
 
           <button

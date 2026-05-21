@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { useUser, UserButton, SignInButton } from "@clerk/nextjs";
 import { WordItem } from "@/app/api/analyze/route";
 import WordCard from "@/components/WordCard";
 import WordBook from "@/components/WordBook";
@@ -32,7 +34,7 @@ function loadSavedWords(): WordItem[] {
   }
 }
 
-export default function Home() {
+function HomeContent() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -52,13 +54,20 @@ export default function Home() {
   const [quota, setQuota] = useState(() => getQuota());
   const [conversation, setConversation] = useState<ConversationResult | null>(null);
   const [loadingConversation, setLoadingConversation] = useState(false);
-  const isPremium = false; // TODO: wire up real payment
+  const { user } = useUser();
+  const isPremium = user?.publicMetadata?.isPremium === true;
+  const searchParams = useSearchParams();
   const [stats, setStats] = useState<Stats>(() => ({ wordsSaved: 0, photosAnalyzed: 0, reviewSessions: 0, streakDays: 0, lastActiveDate: "" }));
 
   useEffect(() => {
     setSavedWords(loadSavedWords());
     setStats(loadStats());
   }, []);
+
+  // Show paywall after Stripe redirects back with ?payment=start
+  useEffect(() => {
+    if (searchParams.get("payment") === "start") setShowPaywall(true);
+  }, [searchParams]);
 
   // Reset per-photo state when words change
   useEffect(() => {
@@ -238,18 +247,29 @@ export default function Home() {
           </div>
           <p className="text-xs text-slate-400 mt-0.5 pl-10">Learn English from your world</p>
         </div>
-        <button
-          onClick={() => setShowWordBook(true)}
-          className="relative flex items-center gap-2 bg-white text-slate-600 px-3.5 py-2 rounded-2xl text-sm font-medium shadow-sm shadow-slate-200 border border-slate-100 hover:shadow-md hover:border-slate-200 transition-all"
-        >
-          <span className="text-base">📖</span>
-          <span>My Words</span>
-          {savedWords.length > 0 && (
-            <span className="absolute -top-2 -right-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-sm">
-              {savedWords.length}
-            </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowWordBook(true)}
+            className="relative flex items-center gap-2 bg-white text-slate-600 px-3.5 py-2 rounded-2xl text-sm font-medium shadow-sm shadow-slate-200 border border-slate-100 hover:shadow-md hover:border-slate-200 transition-all"
+          >
+            <span className="text-base">📖</span>
+            <span>My Words</span>
+            {savedWords.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-sm">
+                {savedWords.length}
+              </span>
+            )}
+          </button>
+          {user ? (
+            <UserButton />
+          ) : (
+            <SignInButton mode="modal">
+              <button className="flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3.5 py-2 rounded-2xl text-sm font-medium shadow-sm shadow-blue-200 hover:shadow-md hover:shadow-blue-300 transition-all">
+                Sign in
+              </button>
+            </SignInButton>
           )}
-        </button>
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col px-4 pb-8 gap-4 max-w-lg mx-auto w-full">
@@ -574,5 +594,13 @@ export default function Home() {
         />
       )}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   );
 }
