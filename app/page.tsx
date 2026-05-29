@@ -65,6 +65,20 @@ function HomeContent() {
     setStats(loadStats());
   }, []);
 
+  // Sync words from Supabase when user signs in
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/wordbook")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.words) {
+          setSavedWords(data.words);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data.words));
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
+
   // Show paywall after Stripe redirects back with ?payment=start
   useEffect(() => {
     if (searchParams.get("payment") === "start") setShowPaywall(true);
@@ -208,7 +222,14 @@ function HomeContent() {
       setStats(loadStats());
       return updated;
     });
-  }, []);
+    if (user) {
+      fetch("/api/wordbook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(word),
+      }).catch(() => {});
+    }
+  }, [user]);
 
   const saveAllWords = useCallback(() => {
     setSavedWords((prev) => {
@@ -218,10 +239,19 @@ function HomeContent() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       recordWordsSaved(newWords.length);
       setStats(loadStats());
+      if (user) {
+        newWords.forEach((word) => {
+          fetch("/api/wordbook", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(word),
+          }).catch(() => {});
+        });
+      }
       return updated;
     });
     setSavedAll(true);
-  }, [words]);
+  }, [words, user]);
 
   const handleShare = useCallback(async () => {
     if (!imageUrl || words.length === 0) return;
@@ -242,7 +272,14 @@ function HomeContent() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-  }, []);
+    if (user) {
+      fetch("/api/wordbook", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: wordStr }),
+      }).catch(() => {});
+    }
+  }, [user]);
 
   const isSaved = (word: string) => savedWords.some((w) => w.word === word);
   const allSaved = words.length > 0 && words.every((w) => isSaved(w.word));
